@@ -1,0 +1,40 @@
+name: Build Mac Glow
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Test
+        run: cargo test
+
+      - name: Build plug-in
+        run: cargo build --release --target wasm32-unknown-unknown
+
+      - name: Keep the .wasm as a downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac_glow
+          path: target/wasm32-unknown-unknown/release/mac_glow.wasm
+
+      - name: Publish a release with the .wasm (direct download, no zip)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v1.0.${{ github.run_number }}" \
+            target/wasm32-unknown-unknown/release/mac_glow.wasm \
+            --title "Mac Glow build ${{ github.run_number }}" \
+            --notes "Load in EffectCraft with Effect > Load Effect Plug-in."
